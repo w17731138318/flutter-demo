@@ -6,6 +6,7 @@
  */
 
 import 'package:flutter/material.dart';
+import 'package:flutter_slidable/flutter_slidable.dart';
 
 class Week11 extends StatefulWidget {
   @override
@@ -13,53 +14,412 @@ class Week11 extends StatefulWidget {
 }
 
 class _Week11State extends State<Week11> with SingleTickerProviderStateMixin {
-  ScrollController _controller;
+  SlidableController slidableController;
+  List<Color> colors = [Colors.deepPurpleAccent, Colors.yellow, Colors.deepOrangeAccent, Colors.pinkAccent];
+  final List<_HomeItem> items = List.generate(
+    20,
+    (i) => _HomeItem(
+      i,
+      'Tile n°$i',
+      _getSubtitle(i),
+      _getAvatarColor(i),
+    ),
+  );
 
   @override
   void initState() {
+    slidableController = SlidableController(
+      onSlideAnimationChanged: handleSlideAnimationChanged,
+      onSlideIsOpenChanged: handleSlideIsOpenChanged,
+    );
     super.initState();
-    _controller = ScrollController();
+  }
+
+  Animation<double> _rotationAnimation;
+  Color _fabColor = Colors.blue;
+
+  void handleSlideAnimationChanged(Animation<double> slideAnimation) {
+    setState(() {
+      _rotationAnimation = slideAnimation;
+    });
+  }
+
+  void handleSlideIsOpenChanged(bool isOpen) {
+    setState(() {
+      _fabColor = isOpen ? Colors.green : Colors.blue;
+    });
+  }
+
+  Widget _buildList(BuildContext context, Axis direction) {
+    return ListView.builder(
+      scrollDirection: direction,
+      itemBuilder: (context, index) {
+        final Axis slidableDirection = direction == Axis.horizontal ? Axis.vertical : Axis.horizontal;
+        var item = items[index];
+
+        if (item.index < 8) {
+          return _getSlidableWithLists(context, index, slidableDirection);
+        } else {
+          return _getSlidableWithDelegates(context, index, slidableDirection);
+        }
+      },
+      itemCount: items.length,
+    );
+  }
+
+  Widget _getSlidableWithLists(BuildContext context, int index, Axis direction) {
+    final _HomeItem item = items[index];
+    //final int t = index;
+    return Slidable(
+      key: Key(item.title),
+      controller: slidableController,
+      direction: direction,
+      dismissal: SlidableDismissal(
+        child: SlidableDrawerDismissal(),
+        onDismissed: (actionType) {
+          _showSnackBar(context, actionType == SlideActionType.primary ? 'Dismiss Archive' : 'Dimiss Delete');
+          setState(() {
+            items.removeAt(index);
+          });
+        },
+      ),
+      actionPane: _getActionPane(item.index),
+      actionExtentRatio: 0.25,
+      child: direction == Axis.horizontal ? VerticalListItem(items[index]) : HorizontalListItem(items[index]),
+      actions: <Widget>[
+        Padding(
+          padding: EdgeInsets.only(top: 8.0, left: 8.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: IconSlideAction(
+              caption: '保存',
+              color: Colors.blue,
+              icon: Icons.archive,
+              onTap: () => _showSnackBar(context, '保存'),
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(top: 8.0, left: 8.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: IconSlideAction(
+              caption: '分享',
+              color: Colors.indigo,
+              icon: Icons.share,
+              onTap: () => _showSnackBar(context, '分享'),
+            ),
+          ),
+        ),
+      ],
+      secondaryActions: <Widget>[
+        Padding(
+          padding: EdgeInsets.only(top: 8.0, right: 8.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: IconSlideAction(
+              caption: '更多',
+              color: Colors.grey.shade200,
+              icon: Icons.more_horiz,
+              onTap: () => _showSnackBar(context, '更多'),
+              closeOnTap: false,
+            ),
+          ),
+        ),
+        Padding(
+          padding: EdgeInsets.only(top: 8.0, right: 8.0),
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(8.0),
+            child: IconSlideAction(
+              caption: '删除',
+              color: Colors.red,
+              icon: Icons.delete,
+              onTap: () => _showSnackBar(context, '删除'),
+            ),
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _getSlidableWithDelegates(BuildContext context, int index, Axis direction) {
+    final _HomeItem item = items[index];
+
+    return Slidable.builder(
+      key: Key(item.title),
+      controller: slidableController,
+      direction: direction,
+      dismissal: SlidableDismissal(
+        child: SlidableDrawerDismissal(),
+        closeOnCanceled: true,
+        onWillDismiss: (item.index != 10)
+            ? null
+            : (actionType) {
+                return showDialog<bool>(
+                  context: context,
+                  builder: (context) {
+                    return AlertDialog(
+                      title: Text('删除'),
+                      content: Text('Item will be deleted'),
+                      actions: <Widget>[
+                        FlatButton(
+                          child: Text('Cancel'),
+                          onPressed: () => Navigator.of(context).pop(false),
+                        ),
+                        FlatButton(
+                          child: Text('Ok'),
+                          onPressed: () => Navigator.of(context).pop(true),
+                        ),
+                      ],
+                    );
+                  },
+                );
+              },
+        onDismissed: (actionType) {
+          _showSnackBar(context, actionType == SlideActionType.primary ? 'Dismiss Archive' : 'Dimiss Delete');
+          setState(() {
+            items.removeAt(index);
+          });
+        },
+      ),
+      actionPane: _getActionPane(item.index),
+      actionExtentRatio: 0.25,
+      child: direction == Axis.horizontal ? VerticalListItem(items[index]) : HorizontalListItem(items[index]),
+      actionDelegate: SlideActionBuilderDelegate(
+          actionCount: 2,
+          builder: (context, index, animation, renderingMode) {
+            if (index == 0) {
+              return Padding(
+                padding: EdgeInsets.only(top: 8.0, left: 8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: IconSlideAction(
+                    caption: '保存',
+                    color: renderingMode == SlidableRenderingMode.slide
+                        ? Colors.blue.withOpacity(animation.value)
+                        : (renderingMode == SlidableRenderingMode.dismiss ? Colors.blue : Colors.green),
+                    icon: Icons.archive,
+                    onTap: () async {
+                      var state = Slidable.of(context);
+                      var dismiss = await showDialog<bool>(
+                        context: context,
+                        builder: (context) {
+                          return AlertDialog(
+                            title: Text('删除'),
+                            content: Text('Item will be deleted'),
+                            actions: <Widget>[
+                              FlatButton(
+                                child: Text('Cancel'),
+                                onPressed: () => Navigator.of(context).pop(false),
+                              ),
+                              FlatButton(
+                                child: Text('Ok'),
+                                onPressed: () => Navigator.of(context).pop(true),
+                              ),
+                            ],
+                          );
+                        },
+                      );
+
+                      if (dismiss) {
+                        state.dismiss();
+                      }
+                    },
+                  ),
+                ),
+              );
+            } else {
+              return Padding(
+                padding: EdgeInsets.only(top: 8.0, left: 8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: IconSlideAction(
+                    caption: '分享',
+                    color: renderingMode == SlidableRenderingMode.slide ? Colors.indigo.withOpacity(animation.value) : Colors.indigo,
+                    icon: Icons.share,
+                    onTap: () => _showSnackBar(context, '分享'),
+                  ),
+                ),
+              );
+            }
+          }),
+      secondaryActionDelegate: SlideActionBuilderDelegate(
+          actionCount: 2,
+          builder: (context, index, animation, renderingMode) {
+            if (index == 0) {
+              return Padding(
+                padding: EdgeInsets.only(top: 8.0, right: 8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: IconSlideAction(
+                    caption: '更多',
+                    color: renderingMode == SlidableRenderingMode.slide ? Colors.grey.shade200.withOpacity(animation.value) : Colors.grey.shade200,
+                    icon: Icons.more_horiz,
+                    onTap: () => _showSnackBar(context, '更多'),
+                    closeOnTap: false,
+                  ),
+                ),
+              );
+            } else {
+              return Padding(
+                padding: EdgeInsets.only(top: 8.0, right: 8.0),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(8.0),
+                  child: IconSlideAction(
+                    caption: '删除',
+                    color: renderingMode == SlidableRenderingMode.slide ? Colors.red.withOpacity(animation.value) : Colors.red,
+                    icon: Icons.delete,
+                    onTap: () => _showSnackBar(context, '删除'),
+                  ),
+                ),
+              );
+            }
+          }),
+    );
+  }
+
+  static Widget _getActionPane(int index) {
+    switch (index % 4) {
+      case 0:
+        return SlidableBehindActionPane();
+      case 1:
+        return SlidableStrechActionPane();
+      case 2:
+        return SlidableScrollActionPane();
+      case 3:
+        return SlidableDrawerActionPane();
+      default:
+        return null;
+    }
+  }
+
+  static Color _getAvatarColor(int index) {
+    switch (index % 4) {
+      case 0:
+        return Colors.red;
+      case 1:
+        return Colors.green;
+      case 2:
+        return Colors.blue;
+      case 3:
+        return Colors.indigoAccent;
+      default:
+        return null;
+    }
+  }
+
+  static String _getSubtitle(int index) {
+    switch (index % 4) {
+      case 0:
+        return 'SlidableBehindActionPane';
+      case 1:
+        return 'SlidableStrechActionPane';
+      case 2:
+        return 'SlidableScrollActionPane';
+      case 3:
+        return 'SlidableDrawerActionPane';
+      default:
+        return null;
+    }
+  }
+
+  void _showSnackBar(BuildContext context, String text) {
+    Scaffold.of(context).showSnackBar(SnackBar(content: Text(text)));
   }
 
   @override
   Widget build(BuildContext context) {
-    return CustomScrollView(
-      controller: _controller,
-      slivers: <Widget>[
-        SliverAppBar(
-          floating: true,
-          title: Text('SliverAppBar'),
-          expandedHeight: 200,
-          flexibleSpace: FlexibleSpaceBar(
-              background: Image.asset(
-            'assets/myimage.jpg',
-            fit: BoxFit.cover,
-          )),
+    return Scaffold(
+      appBar: AppBar(
+        title: Text('back'),
+      ),
+      body: Center(
+        child: OrientationBuilder(
+          builder: (context, orientation) => _buildList(context, orientation == Orientation.portrait ? Axis.vertical : Axis.horizontal),
         ),
-        SliverList(
-            delegate: SliverChildListDelegate([
-          Container(
-            height: 200,
-            color: Colors.deepOrangeAccent,
-          ),
-          Container(
-            height: 200,
-            color: Colors.blue,
-          ),
-          Container(
-            height: 200,
-            color: Colors.greenAccent,
-          ),
-          Container(
-            height: 200,
-            color: Colors.deepPurpleAccent,
-          ),
-          Container(
-            height: 200,
-            color: Colors.yellow,
-          ),
-        ])),
-      ],
+      ),
     );
   }
+}
+
+class HorizontalListItem extends StatelessWidget {
+  HorizontalListItem(this.item);
+
+  final _HomeItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      color: Colors.white,
+      width: 160.0,
+      child: Column(
+        mainAxisSize: MainAxisSize.max,
+        children: <Widget>[
+          Expanded(
+            child: CircleAvatar(
+              backgroundColor: item.color,
+              child: Text('${item.index}'),
+              foregroundColor: Colors.white,
+            ),
+          ),
+          Expanded(
+            child: Center(
+              child: Text(
+                item.subtitle,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class VerticalListItem extends StatelessWidget {
+  List<Color> colors = [Colors.deepPurpleAccent, Colors.yellow, Colors.deepOrangeAccent, Colors.pinkAccent];
+
+  VerticalListItem(this.item);
+
+  final _HomeItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    var colorIndex = item.index % 4;
+    final Color color = colors[colorIndex];
+    return GestureDetector(
+      onTap: () => Slidable.of(context)?.renderingMode == SlidableRenderingMode.none ? Slidable.of(context)?.open() : Slidable.of(context)?.close(),
+      child: Padding(
+        padding: EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(8.0),
+          child: Container(
+            color: color,
+            child: ListTile(
+              leading: CircleAvatar(
+                backgroundColor: item.color,
+                child: Text('${item.index}'),
+                foregroundColor: Colors.white,
+              ),
+              title: Text(item.title),
+              subtitle: Text(item.subtitle),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HomeItem {
+  const _HomeItem(
+    this.index,
+    this.title,
+    this.subtitle,
+    this.color,
+  );
+
+  final int index;
+  final String title;
+  final String subtitle;
+  final Color color;
 }

@@ -87,13 +87,16 @@ class _Week12State extends State<Week12> {
   }
 
   Widget _buildContainer(Color color) {
-    return Container(
-      alignment: Alignment.center,
-      height: 100,
-      color: color,
-      child: Text(
-        'SliverList',
-        style: TextStyle(decoration: TextDecoration.none, fontSize: 24.0, color: Colors.white),
+    return Padding(
+      padding: EdgeInsets.only(top: 8.0, left: 8.0, right: 8.0),
+      child: Container(
+        alignment: Alignment.center,
+        decoration: BoxDecoration(borderRadius: BorderRadius.circular(8.0), color: color),
+        height: 100,
+        child: Text(
+          'SliverList',
+          style: TextStyle(decoration: TextDecoration.none, fontSize: 24.0, color: Colors.white),
+        ),
       ),
     );
   }

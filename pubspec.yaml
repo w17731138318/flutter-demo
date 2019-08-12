@@ -29,6 +29,8 @@ dependencies:
   sqflite: ^1.1.6+3
   path_provider: ^1.2.0
   shared_preferences: ^0.5.3+4
+  # 左右滑动 删除 分享
+  flutter_slidable: ^0.5.3
 dev_dependencies:
   flutter_test:
     sdk: flutter
